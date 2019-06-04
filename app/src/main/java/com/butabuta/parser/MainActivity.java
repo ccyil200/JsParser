@@ -39,10 +39,12 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
-                String test = "if (1+2 > 4) {" +
-                        "var a=1+2;" +
-                        "var b=2+3;} else {" +
-                        "1+1; var c=5+6;}";
+                String test = "var a=0; while(a < 10) {" +
+                        "a++;" +
+                        "if (a == 5) {" +
+                        "break;" +
+                        "}" +
+                        "}";
                 JsParser.getInstance().test(test);
                 try {
                     JsParser.getInstance().getStackValue("b");

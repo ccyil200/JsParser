@@ -19,75 +19,46 @@ public class Node {
     public static int MAX_OP_PRE = 14;
     public boolean isLoop;
     public boolean isFunction;
+    public boolean isBreak;
+    public boolean isContinue;
 
     public static Map<String, Integer> opPre = new HashMap<>();
-    static {
-        opPre.put("(", 1);
-        opPre.put(")", 1);
-        opPre.put(".", 1);
-        opPre.put("!", 2);
-        opPre.put("++", 2);
-        opPre.put("--", 2);
-        opPre.put("*", 3);
-        opPre.put("/", 3);
-        opPre.put("%", 3);
-        opPre.put("+", 4);
-        opPre.put("-", 4);
-        opPre.put("<<", 5);
-        opPre.put(">>", 5);
-        opPre.put("<<<", 5);
-        opPre.put(">>>", 5);
-        opPre.put("<", 6);
-        opPre.put(">", 6);
-        opPre.put("<=", 6);
-        opPre.put(">=", 6);
-        opPre.put("==", 7);
-        opPre.put("!=", 7);
-        opPre.put("&", 8);
-        opPre.put("^", 9);
-        opPre.put("|", 10);
-        opPre.put("&&", 11);
-        opPre.put("||", 12);
-        opPre.put("?", 13);
-        opPre.put(":", 13);
-        opPre.put("=", 14);
-        opPre.put("+=", 14);
-        opPre.put("-=", 14);
-        opPre.put("*=", 14);
-        opPre.put("/=", 14);
-        opPre.put("%=", 14);
-        opPre.put("&=", 14);
-        opPre.put("|=", 14);
-        opPre.put("^=", 14);
-        opPre.put("<<=", 14);
-        opPre.put(">>=", 14);
-        opPre.put(">>>=", 14);
-    }
 
     public Node(String val) {
         this.val = val;
     }
 
     public Object getReturn() throws Throwable {
+        isBreak = false;
+        isContinue = false;
         if (child != null) {
             Object obj1 = null;
             Object returnValue = null;
             HashMap<Integer, Object> objs = new HashMap<>();
             Node point = child;
-            while (true) {
+            while (!isBreak && !isContinue) {
                 if (point == null) {
                     break;
                 }
 
                 obj1 = point.getReturn();
                 objs.put(point.hashCode(), obj1);
+
                 returnValue = obj1;
 
                 if ("!".equals(obj1)) {
                     return !Boolean.valueOf(String.valueOf(point.next.getReturn()));
                 } else if ("++".equals(obj1)) {
                     if (point.pre != null) {
-                        return (1 + Integer.valueOf(String.valueOf(objs.get(point.pre.hashCode()))));
+                        Integer value1 = null;
+                        if (JsParser.getInstance().isContainKey(String.valueOf(objs.get(point.pre.hashCode())))) {
+                            value1 = Integer.valueOf(String.valueOf(JsParser.getInstance().getStackValue(String.valueOf(objs.get(point.pre.hashCode())))));
+                        } else {
+                            value1 = Integer.valueOf(String.valueOf(objs.get(point.pre.hashCode())));
+                        }
+                        value1 = value1 + 1;
+                        JsParser.getInstance().setStackValue(String.valueOf(objs.get(point.pre.hashCode())), value1);
+                        return value1;
                     } else {
                         return (1 + Integer.valueOf(String.valueOf(point.next.getReturn())));
                     }
@@ -172,9 +143,21 @@ public class Node {
                 } else if (">".equals(String.valueOf(obj1))) {
                     return Integer.valueOf(String.valueOf(objs.get(point.pre.hashCode()))) > Integer.valueOf(String.valueOf(point.next.getReturn()));
                 } else if ("<".equals(String.valueOf(obj1))) {
-                    return Integer.valueOf(String.valueOf(objs.get(point.pre.hashCode()))) < Integer.valueOf(String.valueOf(point.next.getReturn()));
+                    Integer value1 = null;
+                    if (JsParser.getInstance().isContainKey(String.valueOf(objs.get(point.pre.hashCode())))) {
+                        value1 = Integer.valueOf(String.valueOf(JsParser.getInstance().getStackValue(String.valueOf(objs.get(point.pre.hashCode())))));
+                    } else {
+                        value1 = Integer.valueOf(String.valueOf(objs.get(point.pre.hashCode())));
+                    }
+                    return value1 < Integer.valueOf(String.valueOf(point.next.getReturn()));
                 } else if ("==".equals(String.valueOf(obj1))) {
-                    return Integer.valueOf(String.valueOf(objs.get(point.pre.hashCode()))).equals(Integer.valueOf(String.valueOf(point.next.getReturn())));
+                    Integer value1 = null;
+                    if (JsParser.getInstance().isContainKey(String.valueOf(objs.get(point.pre.hashCode())))) {
+                        value1 = Integer.valueOf(String.valueOf(JsParser.getInstance().getStackValue(String.valueOf(objs.get(point.pre.hashCode())))));
+                    } else {
+                        value1 = Integer.valueOf(String.valueOf(objs.get(point.pre.hashCode())));
+                    }
+                    return value1.equals(Integer.valueOf(String.valueOf(point.next.getReturn())));
                 } else if (">=".equals(String.valueOf(obj1))) {
                     return Integer.valueOf(String.valueOf(objs.get(point.pre.hashCode()))) >= Integer.valueOf(String.valueOf(point.next.getReturn()));
                 } else if ("<=".equals(String.valueOf(obj1))) {
@@ -213,10 +196,11 @@ public class Node {
                 } else if ("FOR".equals(String.valueOf(obj1))) {
 
                 } else if ("WHILE".equals(String.valueOf(obj1))) {
-                    while (Boolean.valueOf(String.valueOf(point.next.getReturn()))) {
-                        Node node = point.next.next.next;
+                    while (Boolean.valueOf(String.valueOf(point.next.getReturn())) && !point.isBreak) {
+                        Node node = point.next.next;
                         if (node != null) {
-                            node.getReturn();
+                            String v = String.valueOf(node.getReturn());
+                            Log.e("xxxxx", v);
                         }
                     }
                 } else if ("FUNCTION".equals(String.valueOf(obj1))) {
@@ -226,9 +210,9 @@ public class Node {
                     JsParser.getInstance().setStackValue(String.valueOf(obj2), null);
                     return obj2;
                 } else if ("break".equals(String.valueOf(obj1))) {
-
+                    doBreak(point);
                 } else if ("continue".equals(String.valueOf(obj1))) {
-
+                    break;
                 }
 
                 point = point.next;
@@ -238,6 +222,20 @@ public class Node {
             return returnValue;
         } else {
             return val;
+        }
+    }
+
+    private void doBreak(Node node) {
+        Node point = node;
+        while (point != null) {
+            point.isBreak = true;
+            if (point.isLoop || point.isFunction) {
+                break;
+            }
+            if (point.parent != null) {
+                doBreak(point.parent);
+            }
+            point = point.pre;
         }
     }
 
@@ -307,9 +305,11 @@ public class Node {
                     }
                     Node insertNode = new Node(null);
                     if (cur.pre == null) {
+                        insertNode.parent = child.parent;
                         child = insertNode;
                     } else {
                         insertNode.pre = cur.pre;
+                        cur.pre.next = insertNode;
                     }
                     cur.pre = null;
                     insertNode.next = node.next;
@@ -330,9 +330,11 @@ public class Node {
 
                     Node insertNode = new Node(null);
                     if (cur.pre == null) {
+                        insertNode.parent = child.parent;
                         child = insertNode;
                     } else {
                         insertNode.pre = cur.pre;
+                        cur.pre.next = insertNode;
                     }
                     cur.pre = null;
                     insertNode.next = node.next;
@@ -354,9 +356,11 @@ public class Node {
 
                     Node insertNode = new Node(null);
                     if (cur.pre == null) {
+                        insertNode.parent = child.parent;
                         child = insertNode;
                     } else {
                         insertNode.pre = cur.pre;
+                        cur.pre.next = insertNode;
                     }
                     insertNode.isFunction = true;
                     cur.pre = null;
@@ -391,6 +395,7 @@ public class Node {
                 if (";".equals(cur.val)) {
                     Node insertNode = new Node(null);
                     if (startNode.pre == null) {
+                        insertNode.parent = child.parent;
                         child = insertNode;
                     } else {
                         insertNode.pre = startNode.pre;
@@ -439,6 +444,7 @@ public class Node {
                         cur.pre.next = insertNode;
                         insertNode.pre = cur.pre;
                     } else {
+                        insertNode.parent = child.parent;
                         child = insertNode;
                     }
 
@@ -485,8 +491,10 @@ public class Node {
                     if (lc == 0) {
                         Node insertNode = new Node(null);
                         if (start.pre == null) {
+                            insertNode.parent = child.parent;
                             child = insertNode;
                         } else {
+                            insertNode.pre = start.pre;
                             start.pre.next = insertNode;
                         }
 
@@ -495,9 +503,11 @@ public class Node {
                             cur.next.pre = insertNode;
                         }
                         cur.pre.next = null;
-                        insertNode.child = start.next;
-                        start.next.pre = null;
-                        start.next.parent = insertNode;
+                        if (start.next != null) {
+                            insertNode.child = start.next;
+                            start.next.pre = null;
+                            start.next.parent = insertNode;
+                        }
                         insertNode.build();
 
                         start = null;
@@ -541,8 +551,10 @@ public class Node {
                     if (lc == 0) {
                         Node insertNode = new Node(null);
                         if (start.pre == null) {
+                            insertNode.parent = child.parent;
                             child = insertNode;
                         } else {
+                            insertNode.pre = start.pre;
                             start.pre.next = insertNode;
                         }
 
@@ -578,27 +590,47 @@ public class Node {
                         throw new Exception("语法错误");
                     }
                     Node insertNode = new Node(null);
-                    cur.pre.next = insertNode;
+                    if (cur.pre != null) {
+                        cur.pre.next = insertNode;
+                        insertNode.pre = cur.pre;
+                    } else {
+                        insertNode.parent = child.parent;
+                        child = insertNode;
+                    }
                     insertNode.next = cur.next.next;
                     insertNode.child = cur;
                     cur.parent = insertNode;
                     cur.next.next = null;
                     hasOp = true;
                 } else if ("++".equals(cur.val) || "--".equals(cur.val)) {
-                    if (isCommWord(cur.pre.val) && !isCommWord(cur.next.val)) {
+                    if ((cur.pre != null && isCommWord(cur.pre.val)) && (cur.next == null || !isCommWord(cur.next.val))) {
                         Node insertNode = new Node(null);
-                        cur.pre.pre.next = insertNode;
+                        if (cur.pre.pre != null) {
+                            cur.pre.pre.next = insertNode;
+                            insertNode.pre = cur.pre.pre;
+                        } else {
+                            insertNode.parent = child.parent;
+                            child = insertNode;
+                        }
                         insertNode.next = cur.next;
                         insertNode.child = cur.pre;
                         cur.parent = insertNode;
                         cur.next = null;
-                    } else if (!isCommWord(cur.pre.val) && isCommWord(cur.next.val)) {
+                        cur.pre.pre = null;
+                    } else if ((cur.pre == null || !isCommWord(cur.pre.val)) && (cur.next != null && isCommWord(cur.next.val))) {
                         Node insertNode = new Node(null);
-                        cur.pre.next = insertNode;
+                        if (cur.pre != null) {
+                            cur.pre.next = insertNode;
+                            insertNode.pre = cur.pre;
+                        } else {
+                            insertNode.parent = child.parent;
+                            child = insertNode;
+                        }
                         insertNode.next = cur.next.next;
                         insertNode.child = cur;
                         cur.parent = insertNode;
-                        cur.next = null;
+                        cur.next.next = null;
+                        cur.pre = null;
                     } else {
                         throw new Exception("语法错误");
                     }
@@ -891,7 +923,7 @@ public class Node {
         cur.next.next = null;
 
         if (insertNode.pre == null) {
-//            insertNode.parent = child.parent;
+            insertNode.parent = child.parent;
             this.child = insertNode;
         }
 

@@ -26,7 +26,7 @@ public class JsParser {
     public static String[] keyWords = {"if", "else", "var", "for",
             "while", "break", "continue", "new", "function", "this"};
     public static String[] specialWords = {",", ";", "'", "\"", "/", "%", "<<", ">>", "|", "&", "^",
-            "*", "=", "!","!=", "+", "-", "||", "<<<", ">>>", "{", "}", "[", "]", "(", ")", "++", "--", "+=", "-=", "*=",
+            "*", "=", "!","!=", "+", "-", "||", "<<<", ">>>", "{", "}", "[", "]", "(", ")", "++", "--", "==", "+=", "-=", "*=",
             "/=", "%=", "|=", "&=", "^=", "<<=", ">>=", "<<<=", ">>>=", ">", "<", ">=", "<=", "\\", "?", "\\."};
     private StringBuffer buff = new StringBuffer();
     private LinkedList<String> stack = new LinkedList<>();
@@ -197,7 +197,11 @@ public class JsParser {
     public boolean isContainKey(String key) throws Exception {
         int levelIndex = overallLevelIndex;
         while (levelIndex > -1) {
-            Map<String, Object> map = variableStack.get(levelIndex);
+            Map<String, Object> map = null;
+            try {
+                map = variableStack.get(levelIndex);
+            } catch (Exception e) {
+            }
             if (map != null) {
                 if (map.containsKey(key)) {
                     return true;
